@@ -1,0 +1,10 @@
+mardi 08/09/25
+POUR TOUTES RECHERCHES 
+**SAVOIR PRENDRE LE TEMPS DE BIEN LIRE EN DETAILS ET COMPRENDRE 
+
+**Git et GitHub ne sont pas les mêmes choses
+****Git est un système de contrôle de version qui suit les modifications de fichiers
+
+****GitHub est une plateforme qui permet aux développeurs de collaborer et de stocker leur code  dans le cloud.
+
+Git et GitHub travaillent ensemble pour faciliter grandement  la création , la mise a l'échelle , la sécurisation et le stockage de logiciels

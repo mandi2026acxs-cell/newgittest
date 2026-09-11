@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventaire réseau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0D1117;
+    --surface: #141B22;
+    --surface-raised: #1A232C;
+    --border: #263240;
+    --border-soft: #1D2731;
+    --text: #DCE4EA;
+    --text-muted: #7C8B99;
+    --text-dim: #4E5C68;
+    --accent: #5FD1A0;
+    --accent-dim: #5FD1A02a;
+    --warn: #E8B54F;
+    --warn-dim: #E8B54F2a;
+    --danger: #E8637A;
+    --danger-dim: #E8637A2a;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height:100vh;
+    background-image:
+      linear-gradient(var(--border-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-attachment: fixed;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  a{color:inherit;}
+
+  /* ---- Layout shell ---- */
+  .shell{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+
+  header.top{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+    flex-wrap:wrap;
+  }
+  header.top h1{
+    font-size: 26px;
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  header.top .sub{
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .stats{
+    display:flex;
+    gap: 22px;
+    flex-wrap:wrap;
+  }
+  .stat{ text-align:right; }
+  .stat .n{ font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; line-height:1; }
+  .stat .l{ font-size:11px; color:var(--text-muted); margin-top:4px; }
+  .stat.online .n{ color: var(--accent); }
+  .stat.maint .n{ color: var(--warn); }
+  .stat.offline .n{ color: var(--danger); }
+
+  button.primary{
+    background: var(--accent);
+    color: #08130E;
+    border:none;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    cursor:pointer;
+  }
+  button.primary:hover{ filter: brightness(1.08); }
+  button.primary:focus-visible{ outline: 2px solid var(--text); outline-offset:2px; }
+
+  /* ---- Body layout: sidebar + table ---- */
+  .layout{
+    display:grid;
+    grid-template-columns: 200px 1fr;
+    gap: 22px;
+    align-items:start;
+  }
+  @media (max-width: 760px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  aside{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: sticky;
+    top: 20px;
+  }
+  aside h2{
+    font-size: 12px;
+    text-transform:none;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-weight:500;
+  }
+  .filter-group{ margin-bottom:18px; }
+  .filter-group:last-child{ margin-bottom:0; }
+  .filter-group label{
+    display:block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom:6px;
+  }
+  select, input[type=text], input[type=search], textarea{
+    width:100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+  }
+  select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .clear-filters{
+    background:none;
+    border:1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    width:100%;
+    margin-top: 4px;
+  }
+  .clear-filters:hover{ color: var(--text); border-color: var(--text-dim); }
+
+  main{ min-width:0; }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin-bottom: 14px;
+  }
+  .toolbar input[type=search]{ flex:1; }
+
+  .table-wrap{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow:hidden;
+  }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left;
+    font-size: 12px;
+    font-weight:500;
+    color: var(--text-muted);
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14px;
+    vertical-align:middle;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background: var(--surface-raised); }
+  .name-cell .device-name{ font-weight:600; }
+  .name-cell .device-site{ color: var(--text-muted); font-size:12px; margin-top:2px; }
+  .addr{ color: var(--text-muted); }
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size: 12px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space:nowrap;
+  }
+  .badge::before{ content:''; width:6px; height:6px; border-radius:50%; }
+  .badge.online{ background: var(--accent-dim); color: var(--accent); }
+  .badge.online::before{ background: var(--accent); }
+  .badge.maintenance{ background: var(--warn-dim); color: var(--warn); }
+  .badge.maintenance::before{ background: var(--warn); }
+  .badge.offline{ background: var(--danger-dim); color: var(--danger); }
+  .badge.offline::before{ background: var(--danger); }
+
+  .row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+  .icon-btn{
+    background:none;
+    border:1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: var(--radius);
+    width:30px; height:30px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{ color: var(--text); border-color: var(--text-dim); }
+  .icon-btn.danger:hover{ color: var(--danger); border-color: var(--danger); }
+
+  .empty-state{
+    padding: 56px 20px;
+    text-align:center;
+    color: var(--text-muted);
+  }
+  .empty-state p{ margin: 6px 0 0; font-size:14px; }
+  .empty-state .big{ font-size: 15px; color: var(--text); font-weight:600; }
+
+  /* ---- Modal ---- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background: rgba(6,9,12,0.7);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 40px 20px;
+    overflow-y:auto;
+    z-index: 50;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    padding: 24px;
+  }
+  .modal h2{ margin:0 0 4px; font-size:18px; }
+  .modal .modal-sub{ color:var(--text-muted); font-size:13px; margin: 0 0 20px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px; }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .modal-actions{
+    display:flex; justify-content:flex-end; gap:10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-soft);
+  }
+  button.ghost{
+    background:none; border:1px solid var(--border); color:var(--text-muted);
+    padding: 10px 16px; border-radius: var(--radius); font-family:'Space Grotesk',sans-serif;
+    font-size:14px; cursor:pointer;
+  }
+  button.ghost:hover{ color:var(--text); }
+
+  .toast{
+    position: fixed;
+    bottom: 20px; left:50%; transform: translateX(-50%);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .2s ease;
+    z-index: 60;
+  }
+  .toast.show{ opacity:1; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="top">
+    <div>
+      <h1>Inventaire réseau</h1>
+      <div class="sub">Suivi des équipements — routeurs, switchs, pare-feux, points d'accès</div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <h2>Filtres</h2>
+      <div class="filter-group">
+        <label for="filterType">Type</label>
+        <select id="filterType">
+          <option value="">Tous les types</option>
+          <option>Routeur</option>
+          <option>Switch</option>
+          <option>Pare-feu</option>
+          <option>Point d'accès</option>
+          <option>Serveur</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filterStatus">Statut</label>
+        <select id="filterStatus">
+          <option value="">Tous les statuts</option>
+          <option value="online">En ligne</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="offline">Hors ligne</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filterSite">Site</label>
+        <select id="filterSite">
+          <option value="">Tous les sites</option>
+        </select>
+      </div>
+      <button class="clear-filters" id="clearFilters">Réinitialiser les filtres</button>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <input type="search" id="searchBox" placeholder="Rechercher par nom, IP ou adresse MAC…">
+        <button class="primary" id="openAdd">+ Ajouter un équipement</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="table">
+          <thead>
+            <tr>
+              <th>Équipement</th>
+              <th>Type</th>
+              <th>Adresse IP</th>
+              <th>Adresse MAC</th>
+              <th>Statut</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty-state" id="emptyState" style="display:none;">
+          <div class="big">Aucun équipement trouvé</div>
+          <p>Ajuste tes filtres ou ajoute un nouvel équipement.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Ajouter un équipement</h2>
+    <p class="modal-sub">Renseigne les informations de l'équipement réseau.</p>
+    <form id="deviceForm">
+      <div class="field">
+        <label for="fName">Nom de l'équipement</label>
+        <input type="text" id="fName" required placeholder="ex. Switch-Baie-A-01">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="fType">Type</label>
+          <select id="fType">
+            <option>Routeur</option>
+            <option>Switch</option>
+            <option>Pare-feu</option>
+            <option>Point d'accès</option>
+            <option>Serveur</option>
+            <option>Autre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fStatus">Statut</label>
+          <select id="fStatus">
+            <option value="online">En ligne</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="offline">Hors ligne</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="fIp">Adresse IP</label>
+          <input type="text" id="fIp" class="mono" placeholder="192.168.1.1">
+        </div>
+        <div class="field">
+          <label for="fMac">Adresse MAC</label>
+          <input type="text" id="fMac" class="mono" placeholder="00:1A:2B:3C:4D:5E">
+        </div>
+      </div>
+      <div class="field">
+        <label for="fSite">Site / emplacement</label>
+        <input type="text" id="fSite" placeholder="ex. Siège — Baie A">
+      </div>
+      <div class="field">
+        <label for="fNotes">Notes</label>
+        <textarea id="fNotes" rows="2" placeholder="Modèle, numéro de série, remarques…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="cancelModal">Annuler</button>
+        <button type="submit" class="primary" id="submitBtn">Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'devices';
+let devices = [];
+let editingId = null;
+
+const seed = [
+  {id: crypto.randomUUID(), name:'RTR-CORE-01', type:'Routeur', ip:'10.0.0.1', mac:'A4:B1:C2:D3:E4:F5', status:'online', site:'Siège — Baie A', notes:'MikroTik CCR2004'},
+  {id: crypto.randomUUID(), name:'SW-ACCESS-04', type:'Switch', ip:'10.0.1.14', mac:'B2:C3:D4:E5:F6:A7', status:'online', site:'Siège — Étage 2', notes:'Cisco Catalyst 2960, 48 ports'},
+  {id: crypto.randomUUID(), name:'FW-EDGE-01', type:'Pare-feu', ip:'10.0.0.254', mac:'C1:D2:E3:F4:A5:B6', status:'maintenance', site:'Siège — Baie A', notes:'Mise à jour firmware en cours'},
+  {id: crypto.randomUUID(), name:'AP-HALL-02', type:"Point d'accès", ip:'10.0.2.22', mac:'D3:E4:F5:A6:B7:C8', status:'offline', site:'Annexe — Hall', notes:'Hors service depuis coupure secteur'},
+];
+
+async function loadDevices(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    devices = res ? JSON.parse(res.value) : seed;
+  }catch(e){
+    devices = seed;
+  }
+  if(!devices.length) devices = seed;
+  render();
+}
+
+async function saveDevices(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(devices), false);
+  }catch(e){
+    console.error('Échec de la sauvegarde', e);
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+function statusLabel(s){
+  return {online:'En ligne', maintenance:'Maintenance', offline:'Hors ligne'}[s] || s;
+}
+
+function populateSiteFilter(){
+  const sel = document.getElementById('filterSite');
+  const current = sel.value;
+  const sites = [...new Set(devices.map(d=>d.site).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Tous les sites</option>' + sites.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  sel.value = current;
+}
+
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function getFiltered(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const type = document.getElementById('filterType').value;
+  const status = document.getElementById('filterStatus').value;
+  const site = document.getElementById('filterSite').value;
+  return devices.filter(d=>{
+    if(type && d.type !== type) return false;
+    if(status && d.status !== status) return false;
+    if(site && d.site !== site) return false;
+    if(q){
+      const hay = `${d.name} ${d.ip} ${d.mac}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render(){
+  populateSiteFilter();
+  const list = getFiltered();
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('emptyState');
+  const wrap = document.getElementById('table');
+
+  if(!list.length){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    wrap.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
+    wrap.style.display = 'table';
+    tbody.innerHTML = list.map(d => `
+      <tr>
+        <td class="name-cell">
+          <div class="device-name">${escapeHtml(d.name)}</div>
+          ${d.site ? `<div class="device-site">${escapeHtml(d.site)}</div>` : ''}
+        </td>
+        <td>${escapeHtml(d.type)}</td>
+        <td class="mono addr">${escapeHtml(d.ip) || '—'}</td>
+        <td class="mono addr">${escapeHtml(d.mac) || '—'}</td>
+        <td><span class="badge ${d.status}">${statusLabel(d.status)}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" title="Modifier" onclick="openEdit('${d.id}')">✎</button>
+            <button class="icon-btn danger" title="Supprimer" onclick="removeDevice('${d.id}')">✕</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  const total = devices.length;
+  const online = devices.filter(d=>d.status==='online').length;
+  const maint = devices.filter(d=>d.status==='maintenance').length;
+  const offline = devices.filter(d=>d.status==='offline').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
+    <div class="stat online"><div class="n">${online}</div><div class="l">En ligne</div></div>
+    <div class="stat maint"><div class="n">${maint}</div><div class="l">Maintenance</div></div>
+    <div class="stat offline"><div class="n">${offline}</div><div class="l">Hors ligne</div></div>
+  `;
+}
+
+function openModal(title, submitLabel){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('submitBtn').textContent = submitLabel;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('fName').focus();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('deviceForm').reset();
+  editingId = null;
+}
+
+document.getElementById('openAdd').addEventListener('click', ()=>{
+  editingId = null;
+  openModal("Ajouter un équipement", "Ajouter");
+});
+document.getElementById('cancelModal').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'modalOverlay') closeModal();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('open')) closeModal();
+});
+
+window.openEdit = function(id){
+  const d = devices.find(x=>x.id === id);
+  if(!d) return;
+  editingId = id;
+  document.getElementById('fName').value = d.name;
+  document.getElementById('fType').value = d.type;
+  document.getElementById('fStatus').value = d.status;
+  document.getElementById('fIp').value = d.ip;
+  document.getElementById('fMac').value = d.mac;
+  document.getElementById('fSite').value = d.site;
+  document.getElementById('fNotes').value = d.notes || '';
+  openModal("Modifier l'équipement", "Enregistrer");
+};
+
+window.removeDevice = async function(id){
+  const d = devices.find(x=>x.id === id);
+  if(!d) return;
+  if(!confirm(`Supprimer "${d.name}" de l'inventaire ?`)) return;
+  devices = devices.filter(x=>x.id !== id);
+  await saveDevices();
+  render();
+  showToast('Équipement supprimé');
+};
+
+document.getElementById('deviceForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const payload = {
+    name: document.getElementById('fName').value.trim(),
+    type: document.getElementById('fType').value,
+    status: document.getElementById('fStatus').value,
+    ip: document.getElementById('fIp').value.trim(),
+    mac: document.getElementById('fMac').value.trim(),
+    site: document.getElementById('fSite').value.trim(),
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+  if(!payload.name) return;
+
+  if(editingId){
+    const idx = devices.findIndex(x=>x.id === editingId);
+    if(idx > -1) devices[idx] = {...devices[idx], ...payload};
+    showToast('Équipement mis à jour');
+  } else {
+    devices.push({id: crypto.randomUUID(), ...payload});
+    showToast('Équipement ajouté');
+  }
+  await saveDevices();
+  closeModal();
+  render();
+});
+
+['searchBox','filterType','filterStatus','filterSite'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', render);
+  document.getElementById(id).addEventListener('change', render);
+});
+document.getElementById('clearFilters').addEventListener('click', ()=>{
+  document.getElementById('filterType').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterSite').value = '';
+  document.getElementById('searchBox').value = '';
+  render();
+});
+
+loadDevices();
+</script>
+</body>
+</html>
